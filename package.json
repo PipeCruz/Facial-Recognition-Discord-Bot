@@ -1,0 +1,15 @@
+{
+  "name": "pipebot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "piperun"
+  },
+  "author": "PipeCruz",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.1.1",
+    "eslint": "^6.8.0"
+  }
+}
