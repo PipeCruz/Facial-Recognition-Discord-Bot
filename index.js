@@ -20,35 +20,53 @@ client.once('ready', () => {
 });
 
 function faceDet(imageIn, channel) {
+    console.log(imageIn);
     https.request(imageIn.replace('.webp', '.png'), (response) => {
         const data = new Stream();
         response.on('data', (d) => {
-            // console.log(`Received ${d.length} bytes of data.`);
+            console.log(`Received ${d.length} bytes of data.`);
             data.push(d);
         });
         response.on('end', () => {
-            fs.writeFileSync('image.' + 'png', data.read());
-            const mat = cv.imread('image.' + 'png');
+            fs.writeFileSync('temp/image.png', data.read());
+            if(cv.imread('temp/image.png') === null) {
+                return;
+            }
+            const mat = cv.imread('temp/image.png');
             const matGray = mat.bgrToGray();
             frontFaceClassifier.detectMultiScaleAsync(matGray, (err, res)=> {
-                if(res.objects === 0) {
-                    channel.send('no face found :(');
-                    return;
-                }
+                // error catch here
                 res.objects.forEach(t => {
-                    console.log(`x = ${t.x}\n
-                                y = ${t.y}\n
-                                width = ${t.width}\n
-                                height = ${t.height}
-                                \n`);
+                    console.log(`x = ${t.x}`);
+                    console.log(`y = ${t.y}`);
+                    console.log(`width = ${t.width}`);
+                    console.log(`height = ${t.height}`);
+                    console.log('--------------');
                     const point1 = new cv.Point2(t.x, t.y);
                     const point2 = new cv.Point2(t.x + t.width, t.y + t.height);
                     mat.drawRectangle(point1, point2, new cv.Vec(255, 0, 0));
-                    // end of drawing face rectangle, time for eyes
                 });
-                cv.imwriteAsync('img.png', mat, ()=>{
+                cv.imwrite('temp/img.png', mat);
+            });
+            // time to write to eyes
+            eyeClassifier.detectMultiScaleAsync(matGray, (err, res)=> {
+                let inte = 0;
+                res.objects.forEach(t => {
+                    if (inte++ < 2) {
+                        console.log(`EYE ${inte}`);
+                        console.log(`x = ${t.x}`);
+                        console.log(`y = ${t.y}`);
+                        console.log(`width = ${t.width}`);
+                        console.log(`height = ${t.height}`);
+                        console.log('--------------');
+                        const point1 = new cv.Point2(t.x, t.y);
+                        const point2 = new cv.Point2(t.x + t.width, t.y + t.height);
+                        mat.drawRectangle(point1, point2, new cv.Vec(255, 0, 0));
+                    }
+                });
+                cv.imwriteAsync('temp/img.png', mat, ()=>{
                     // async
-                    const attachment = new Discord.MessageAttachment('img.png');
+                    const attachment = new Discord.MessageAttachment('temp/img.png');
                     channel.send(attachment);
                 });
             });
@@ -58,8 +76,8 @@ function faceDet(imageIn, channel) {
 
 client.on('message', m => {
     if(!m.content.startsWith(prefix) || m.author.bot)return;
-    const passesIDTest = userRe.test(args[1]) || regID.test(args[1]);
     const args = m.content.split(' ');
+    const passesIDTest = userRe.test(args[1]) || regID.test(args[1]);
     if(args[0].toLowerCase() === `${prefix}pfp`) {
         if(passesIDTest) {
             const id = args[1].match(regID)[0];
