@@ -1,3 +1,3 @@
 # HelpfulBot.
 I am making this bot
-> Steve will pay for his actions
+> Zach will pay for his actions
