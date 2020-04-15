@@ -6,8 +6,8 @@ const https = require('https');
 const Stream = require('stream').Transform;
 const fs = require('fs');
 const frontFaceClassifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_DEFAULT);
+// const eyeClassifier = new cv.CascadeClassifier(cv.HAAR_EYE);
 const eyeClassifier = new cv.CascadeClassifier(cv.HAAR_EYE);
-// userRe is RegExp for @ed user
 const userRe = /<@!?\d{18}>/;
 const regID = /\d{18}/;
 
@@ -21,7 +21,7 @@ client.once('ready', () => {
 
 function faceDet(imageIn, channel) {
     console.log(imageIn);
-    https.request(imageIn.replace('.webp', '.png'), (response) => {
+    https.request(imageIn, (response) => {
         const data = new Stream();
         response.on('data', (d) => {
             console.log(`Received ${d.length} bytes of data.`);
@@ -48,33 +48,31 @@ function faceDet(imageIn, channel) {
                 });
                 cv.imwrite('temp/img.png', mat);
             });
-            // time to write to eyes
+            // temp
+            // Write eyes
             eyeClassifier.detectMultiScaleAsync(matGray, (err, res)=> {
-                let inte = 0;
+                // let inte = 0;
                 res.objects.forEach(t => {
-                    if (inte++ < 2) {
-                        console.log(`EYE ${inte}`);
-                        console.log(`x = ${t.x}`);
-                        console.log(`y = ${t.y}`);
-                        console.log(`width = ${t.width}`);
-                        console.log(`height = ${t.height}`);
-                        console.log('--------------');
-                        const point1 = new cv.Point2(t.x, t.y);
-                        const point2 = new cv.Point2(t.x + t.width, t.y + t.height);
-                        mat.drawRectangle(point1, point2, new cv.Vec(255, 0, 0));
-                    }
+                    // if (inte++ < (faces * 2)) {
+                    // console.log(`EYE ${inte}`);
+                    console.log(`x = ${t.x}`);
+                    console.log(`y = ${t.y}`);
+                    console.log(`width = ${t.width}`);
+                    console.log(`height = ${t.height}`);
+                    console.log('--------------');
+                    const point1 = new cv.Point2(t.x, t.y);
+                    const point2 = new cv.Point2(t.x + t.width, t.y + t.height);
+                    mat.drawRectangle(point1, point2, new cv.Vec(0, 0, 255));
+                    // }
                 });
-                cv.imwriteAsync('temp/img.png', mat, ()=>{
-                    // async
-                    const attachment = new Discord.MessageAttachment('temp/img.png');
-                    channel.send(attachment);
-                });
+                cv.imwrite('temp/img.png', mat);
             });
+            channel.send(new Discord.MessageAttachment('temp/img.png'));
         });
     }).end();
 }
 
-client.on('message', m => {
+client.on('message', async m => {
     if(!m.content.startsWith(prefix) || m.author.bot)return;
     const args = m.content.split(' ');
     const passesIDTest = userRe.test(args[1]) || regID.test(args[1]);
@@ -84,8 +82,6 @@ client.on('message', m => {
             m.guild.members.fetch(id).then(gMember=>{
                 m.channel.send({
                     files: [gMember.user.displayAvatarURL()]
-                // .replace('.webp', '.jpg')]
-                // change the format of the file.
                 }).then().catch();
             });
         }else if(args.length === 1) {
@@ -93,7 +89,6 @@ client.on('message', m => {
                 files: [m.author.displayAvatarURL()]
             }).then().catch();
         }
-
     }else if(args[0].toLowerCase() === `${prefix}facedet`) {
         if(passesIDTest) {
             const id = args[1].match(regID)[0];
@@ -102,6 +97,8 @@ client.on('message', m => {
             });
         }else if(args.length === 1) {
             faceDet(m.author.displayAvatarURL(), m.channel);
+        }else if(args[1].substr(0, 5) === 'https') {
+            faceDet(args[1], m.channel);
         }
     }else if(args[0] === `${prefix}ping`) {
         m.channel.send('Pong!.. I dont want to find the delay so this is what you\'re going to deal with');
