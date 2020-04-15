@@ -1,13 +1,15 @@
 const Discord = require('discord.js');
-const { prefix, token } = require('./config.json');
 const client = new Discord.Client();
+
 const cv = require('opencv4nodejs');
 const https = require('https');
 const Stream = require('stream').Transform;
 const fs = require('fs');
+const { prefix, token } = require('./config.json');
+
 const frontFaceClassifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_DEFAULT);
-// const eyeClassifier = new cv.CascadeClassifier(cv.HAAR_EYE);
 const eyeClassifier = new cv.CascadeClassifier(cv.HAAR_EYE);
+
 const mentionedRegex = /<@!?\d{18}>/;
 const userIDRegex = /\d{18}/;
 
@@ -15,12 +17,13 @@ client.once('ready', () => {
     console.log('Logged in');
     client.user.setPresence({
         status: 'online',
-        activity: { name: '!!help', type: 'PLAYING' },
+        activity: { name: `${prefix}help`, type: 'PLAYING' },
     });
 });
 
 // fix file type
 function newFaceDet(imageIn, channel) {
+    let totalFacesDetected, totalEyesDetected = 0;
     https.request(imageIn, (response) => {
         console.log(imageIn);
         const data = new Stream();
@@ -38,6 +41,7 @@ function newFaceDet(imageIn, channel) {
             const matGray = mat.bgrToGray();
             const faceObjs = frontFaceClassifier.detectMultiScale(matGray).objects;
             console.log(`Number of faces detected is ${faceObjs.length}`);
+            totalFacesDetected = faceObjs.length;
             faceObjs.forEach(rect =>{
                 // draw face rectangles
                 const point1 = new cv.Point2(rect.x, rect.y);
@@ -47,6 +51,7 @@ function newFaceDet(imageIn, channel) {
                 const sectionForEyes = matGray.getRegion(rect);
                 const eyesDetected = eyeClassifier.detectMultiScale(sectionForEyes).objects;
                 console.log(`eyeObjects has ${eyesDetected.length}`);
+                totalEyesDetected += eyesDetected.length;
                 let eyeCnt = 0;
                 eyesDetected.forEach((eye) => {
                     if(eyeCnt++ < 2) {
@@ -57,7 +62,16 @@ function newFaceDet(imageIn, channel) {
                 });
             });
             cv.imwrite('temp/img.png', mat);
-            channel.send(new Discord.MessageAttachment('temp/img.png'));
+            const attachment = new Discord.MessageAttachment('temp/img.png');
+            channel.send(new Discord.MessageEmbed()
+                .setColor('#fc03c2')
+                .setTitle('FaceDetection Output')
+                .setAuthor('@PipeCruz', 'https://avatars0.githubusercontent.com/u/43627567?s=460&v=4', 'https://github.com/pipecruz')
+                .attachFiles(attachment)
+                .setImage('attachment://img.png')
+                .addField('Faces Detected', `${totalFacesDetected}`)
+                .addField('Eyes Detected', `${totalEyesDetected}`)
+            );
         });
     }).end();
 }
@@ -93,6 +107,35 @@ client.on('message', m => {
         }
     }else if(args[0] === `${prefix}ping`) {
         m.channel.send('Pong!.. I dont want to find the delay so this is what you\'re going to deal with');
+    }else if(args[0] === `${prefix}help`) {
+        m.channel.send(new Discord.MessageEmbed()
+            .setColor('#00ffd5')
+            .setTitle('Commands')
+            .setAuthor('@PipeCruz', 'https://avatars0.githubusercontent.com/u/43627567?s=460&v=4', 'https://github.com/pipecruz')
+            .setThumbnail('https://avatars0.githubusercontent.com/u/43627567?s=64&v=4')
+            .addFields(
+                {
+                    name: `${prefix}help`,
+                    value: 'displays the list of available commands',
+                    inline: false
+                },
+                {
+                    name: `${prefix}pfp, ${prefix}pfp <mention>, ${prefix}pfp <userID>`,
+                    value: 'displays specified user profile picture',
+                    inline: false
+                },
+                {
+                    name: `${prefix}facedet, ${prefix}facedet <mention>, ${prefix}facedet <link>`,
+                    value: 'detects faces/eyes in user profile picture',
+                    inline: false
+                },
+                {
+                    name: `${prefix}github`,
+                    value: 'sends link to bots source code',
+                    inline: false
+                }
+            )
+        );
     }
 });
 
