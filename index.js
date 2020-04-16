@@ -1,12 +1,12 @@
 const Discord = require('discord.js');
-const client = new Discord.Client();
-
 const cv = require('opencv4nodejs');
-const https = require('https');
 const Stream = require('stream').Transform;
+const https = require('https');
 const fs = require('fs');
 const { prefix, token } = require('./config.json');
+const compress_images = require('compress-images');
 
+const client = new Discord.Client();
 const frontFaceClassifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_DEFAULT);
 const eyeClassifier = new cv.CascadeClassifier(cv.HAAR_EYE);
 
@@ -20,8 +20,7 @@ client.once('ready', () => {
         activity: { name: `${prefix}help`, type: 'PLAYING' },
     });
 });
-
-// fix file type
+// fix compression of images
 function newFaceDet(imageIn, channel) {
     let totalFacesDetected, totalEyesDetected = 0;
     https.request(imageIn, (response) => {
@@ -38,6 +37,9 @@ function newFaceDet(imageIn, channel) {
             console.log(`total bytes: ${totalbytes}`);
             fs.writeFileSync('temp/image.png', data.read());
             const mat = cv.imread('temp/image.png');
+            if(mat == null) {
+                return;
+            }
             const matGray = mat.bgrToGray();
             const faceObjs = frontFaceClassifier.detectMultiScale(matGray).objects;
             console.log(`Number of faces detected is ${faceObjs.length}`);
@@ -51,9 +53,10 @@ function newFaceDet(imageIn, channel) {
                 const sectionForEyes = matGray.getRegion(rect);
                 const eyesDetected = eyeClassifier.detectMultiScale(sectionForEyes).objects;
                 console.log(`eyeObjects has ${eyesDetected.length}`);
-                totalEyesDetected += eyesDetected.length;
+                totalEyesDetected += (eyesDetected.length > 2) ? 2 : eyesDetected.length;
                 let eyeCnt = 0;
                 eyesDetected.forEach((eye) => {
+                    // find way to draw eyes more accurately todo fixme
                     if(eyeCnt++ < 2) {
                         const ePoint1 = new cv.Point2(eye.x, eye.y);
                         const ePoint2 = new cv.Point2(eye.x + eye.width, eye.y + eye.height);
@@ -62,6 +65,22 @@ function newFaceDet(imageIn, channel) {
                 });
             });
             cv.imwrite('temp/img.png', mat);
+            // find files to compress
+            if(fs.statSync('temp/img.png')['size'] > 8000000) {
+                console.log('time to compress');
+                compress_images('temp/img.png', 'temp',
+                    { compress_force: false, statistic: true, autoupdate: true },
+                    null,
+                    null,
+                    { png: { engine: 'webp', command: ['-q', '100'] } },
+                    null,
+                    (err, completed, statistic) =>{
+                        console.log(err);
+                        console.log(completed);
+                        console.log(statistic);
+                    }
+                );
+            }
             const attachment = new Discord.MessageAttachment('temp/img.png');
             channel.send(new Discord.MessageEmbed()
                 .setColor('#fc03c2')
@@ -79,7 +98,7 @@ function newFaceDet(imageIn, channel) {
 client.on('message', m => {
     if(!m.content.startsWith(prefix) || m.author.bot)return;
     const args = m.content.split(' ');
-    const passesIDTest = mentionedRegex.test(args[1]) || userIDRegex.test(args[1]);
+    const passesIDTest = (mentionedRegex.test(args[1]) || userIDRegex.test(args[1]));
     if(args[0].toLowerCase() === `${prefix}pfp`) {
         if(passesIDTest) {
             const id = args[1].match(userIDRegex)[0];
@@ -95,7 +114,9 @@ client.on('message', m => {
         }
     }else if(args[0].toLowerCase() === `${prefix}facedet`) {
         // fixme since it looks for 18 characters in url
-        if(args[1] === '-file') {
+        if(args.length == 1 && m.attachments.size == 0) {
+            newFaceDet(m.author.displayAvatarURL(), m.channel);
+        }else if(m.attachments.size == 1) {
             try {
                 let url;
                 m.attachments.forEach(u => {
@@ -105,15 +126,13 @@ client.on('message', m => {
             }catch(error) {
                 console.log(error);
             }
-        }if(args[1].substr(0, 5) === 'https') {
+        }else if(args.length == 2 && args[1].substr(0, 5) === 'https') {
             newFaceDet(args[1], m.channel);
         }else if(passesIDTest) {
             const id = args[1].match(userIDRegex)[0];
             m.guild.members.fetch(id).then(gMember=>{
                 newFaceDet(gMember.user.displayAvatarURL(), m.channel);
             });
-        }else if(args.length === 1) {
-            newFaceDet(m.author.displayAvatarURL(), m.channel);
         }
     }else if(args[0] === `${prefix}ping`) {
         m.channel.send('Pong!.. I dont want to find the delay so this is what you\'re going to deal with');
