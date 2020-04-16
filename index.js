@@ -95,7 +95,17 @@ client.on('message', m => {
         }
     }else if(args[0].toLowerCase() === `${prefix}facedet`) {
         // fixme since it looks for 18 characters in url
-        if(args[1].substr(0, 5) === 'https') {
+        if(args[1] === '-file') {
+            try {
+                let url;
+                m.attachments.forEach(u => {
+                    url = u.url;
+                });
+                newFaceDet(url, m.channel);
+            }catch(error) {
+                console.log(error);
+            }
+        }if(args[1].substr(0, 5) === 'https') {
             newFaceDet(args[1], m.channel);
         }else if(passesIDTest) {
             const id = args[1].match(userIDRegex)[0];
