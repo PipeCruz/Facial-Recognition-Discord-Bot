@@ -66,21 +66,8 @@ function newFaceDet(imageIn, channel) {
             });
             cv.imwrite('temp/img.png', mat);
             // find files to compress
-            if(fs.statSync('temp/img.png')['size'] > 8000000) {
-                console.log('time to compress');
-                compress_images('temp/img.png', 'temp',
-                    { compress_force: false, statistic: true, autoupdate: true },
-                    null,
-                    null,
-                    { png: { engine: 'webp', command: ['-q', '100'] } },
-                    null,
-                    (err, completed, statistic) =>{
-                        console.log(err);
-                        console.log(completed);
-                        console.log(statistic);
-                    }
-                );
-            }
+            console.log(`size of file: ${fs.statSync('temp/img.png')['size']}`);
+            // compress images here
             const attachment = new Discord.MessageAttachment('temp/img.png');
             channel.send(new Discord.MessageEmbed()
                 .setColor('#fc03c2')
