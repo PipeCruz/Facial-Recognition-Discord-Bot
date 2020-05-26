@@ -1,7 +1,2 @@
 node_modules
 config.json
-temp
-.vscode
-.eslintrc.json
-package.json
-package-lock.json
