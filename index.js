@@ -123,6 +123,13 @@ client.on('message', m => {
         }
     }else if(args[0] === `${prefix}ping`) {
         m.channel.send('Pong!.. I dont want to find the delay so this is what you\'re going to deal with');
+    }else if(args[0] === `${prefix}github`) {
+        m.channel.send(new Discord.MessageEmbed()
+        .setColor('#00ffd5')
+        .setTitle('Github')
+        .setAuthor('@PipeCruz', 'https://avatars0.githubusercontent.com/u/43627567?s=460&v=4', 'https://github.com/pipecruz')
+        .setThumbnail('https://avatars0.githubusercontent.com/u/43627567?s=64&v=4')
+        );
     }else if(args[0] === `${prefix}help`) {
         m.channel.send(new Discord.MessageEmbed()
             .setColor('#00ffd5')
