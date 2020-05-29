@@ -1,7 +1,7 @@
 # This Discord bot written in discord.js detects faces in images sent or profile pictures.
 [OpenCV](https://opencv.org/) and nodejs are required for the usage of this bot
 ## To use:
-- create a file called config.json with two fields, the bot's ID, and the prefix you'd like it to use
+- create a file called config.json with two fields, the bot's token, and the prefix you'd like it to use
 - create a folder, "temp" in the root directory
 - `npm install` to download required dependencies
 - `node index` to run the script
